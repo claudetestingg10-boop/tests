@@ -1,366 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Panel</title>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: #111;
-      color: #ddd;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 13px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px 16px;
-    }
-
-    .container { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
-
-    /* header */
-    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .header h1 { font-size: 15px; font-weight: 500; color: #fff; }
-    .status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #555; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: #333; flex-shrink: 0; }
-    .dot.online { background: #4ade80; box-shadow: 0 0 6px #4ade8088; }
-    .dot.offline { background: #f87171; }
-
-    /* card */
-    .card {
-      background: #1a1a1a;
-      border: 1px solid #222;
-      border-radius: 4px;
-      padding: 14px 16px;
-    }
-    .card-label {
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #444;
-      margin-bottom: 14px;
-    }
-
-    /* row = one control */
-    .row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-    .row:last-child { margin-bottom: 0; }
-
-    .row-header { display: flex; justify-content: space-between; align-items: center; }
-    .row-name { color: #bbb; }
-    .row-val { color: #fff; font-weight: 500; min-width: 36px; text-align: right; }
-
-    /* slider */
-    input[type=range] {
-      -webkit-appearance: none;
-      width: 100%;
-      height: 3px;
-      background: #2a2a2a;
-      border-radius: 2px;
-      outline: none;
-      cursor: pointer;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 14px; height: 14px;
-      border-radius: 50%;
-      background: #fff;
-      cursor: pointer;
-      transition: transform 0.1s;
-    }
-    input[type=range]::-webkit-slider-thumb:active { transform: scale(1.3); }
-
-    /* toggle */
-    .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-    .toggle-row:last-child { margin-bottom: 0; }
-    .toggle-name { color: #bbb; }
-    .toggle {
-      width: 36px; height: 20px;
-      background: #2a2a2a;
-      border-radius: 10px;
-      position: relative;
-      cursor: pointer;
-      transition: background 0.2s;
-      flex-shrink: 0;
-      border: none;
-      outline: none;
-    }
-    .toggle.on { background: #4ade80; }
-    .toggle::after {
-      content: '';
-      position: absolute;
-      width: 14px; height: 14px;
-      background: #fff;
-      border-radius: 50%;
-      top: 3px; left: 3px;
-      transition: left 0.2s;
-    }
-    .toggle.on::after { left: 19px; }
-
-    /* apply button */
-    .apply-btn {
-      width: 100%;
-      background: #fff;
-      color: #111;
-      border: none;
-      border-radius: 4px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 13px;
-      font-weight: 500;
-      padding: 11px;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-      letter-spacing: 0.05em;
-    }
-    .apply-btn:hover { opacity: 0.88; }
-    .apply-btn:active { transform: scale(0.98); }
-    .apply-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-    /* feedback */
-    .feedback {
-      text-align: center;
-      font-size: 11px;
-      color: #444;
-      height: 16px;
-      transition: color 0.3s;
-    }
-    .feedback.ok { color: #4ade80; }
-    .feedback.err { color: #f87171; }
-
-    /* log */
-    .log {
-      background: #0e0e0e;
-      border: 1px solid #1e1e1e;
-      border-radius: 4px;
-      padding: 10px 12px;
-      font-size: 11px;
-      line-height: 1.7;
-      color: #444;
-      max-height: 120px;
-      overflow-y: auto;
-    }
-    .log .l-ok { color: #4ade80; }
-    .log .l-err { color: #f87171; }
-    .log .l-info { color: #888; }
-
-    /* waiting screen */
-    #waiting {
-      text-align: center;
-      color: #444;
-      padding: 60px 0;
-    }
-    #waiting p { margin-top: 8px; font-size: 11px; }
-
-    .hidden { display: none !important; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Panel</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-
-  <!-- waiting state -->
-  <div id="waiting">
-    <div>Connecting...</div>
-    <p>Make sure your script is running first.</p>
-  </div>
-
-  <!-- main panel (hidden until connected) -->
-  <div id="panel" class="hidden">
-    <div class="header">
-      <h1>Panel</h1>
-      <div class="status">
-        <div class="dot" id="dot"></div>
-        <span id="statusText">offline</span>
-      </div>
+    <div id="waiting" class="waiting-container">
+        <div class="connecting" id="waiting-title">Connecting...</div>
+        <p id="waiting-sub">Make sure your script is running first.</p>
     </div>
 
-    <!-- Player -->
-    <div class="card">
-      <div class="card-label">Player</div>
+    <div class="gui-window hidden" id="gui-window">
 
-      <div class="row">
-        <div class="row-header">
-          <span class="row-name">Walk Speed</span>
-          <span class="row-val" id="val-speed">16</span>
+        <header class="gui-header">
+            <div class="header-top">
+                <div class="user-info">
+                    <img id="user-avatar" class="user-avatar" src="" alt="">
+                    <div class="user-text">
+                        <div class="user-greeting"><span class="greeting-prefix">Welcome, </span><span id="user-name">Guest</span></div>
+                        <div class="sub-info"><span id="sub-label">Expires in</span> <span id="expire-time">--</span></div>
+                    </div>
+                </div>
+                <div class="gui-status">
+                    <div id="status-dot" class="status-dot"></div>
+                    <span id="status-text">OFFLINE</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="gui-content">
+
+            <!-- Movement -->
+            <div class="category">
+                <h3 class="category-label">
+                    <i class="material-icons-round cat-icon">directions_run</i>
+                    Movement
+                </h3>
+                <div class="feature-row">
+                    <span class="feature-name">
+                        Walk Speed
+                        <div class="tooltip-container">
+                            <i class="material-icons-round info-icon">help_outline</i>
+                            <span class="tooltip">Modify your character's horizontal movement velocity.</span>
+                        </div>
+                    </span>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="toggle-speed">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+                <div class="slider-container">
+                    <div class="slider-header">
+                        <span class="slider-label-key">Speed Value</span>
+                        <span id="label-speed" class="slider-label-val">16</span>
+                    </div>
+                    <div class="custom-slider" id="slider-speed-box">
+                        <div class="slider-track-fill" id="slider-speed-fill"></div>
+                        <div class="slider-thumb" id="slider-speed-thumb"></div>
+                    </div>
+                </div>
+
+                <!-- Jump Power Slider -->
+                <div class="slider-container">
+                    <div class="slider-header">
+                        <span class="slider-label-key">Jump Power</span>
+                        <span id="label-jump-val" class="slider-label-val">50</span>
+                    </div>
+                    <div class="custom-slider" id="slider-jump-box">
+                        <div class="slider-track-fill" id="slider-jump-fill"></div>
+                        <div class="slider-thumb" id="slider-jump-thumb"></div>
+                    </div>
+                </div>
+
+                <div class="feature-row">
+                    <span class="feature-name">
+                        Infinite Jump
+                        <div class="tooltip-container">
+                            <i class="material-icons-round info-icon">help_outline</i>
+                            <span class="tooltip">Bypass jump cooldown and air-state verification.</span>
+                        </div>
+                    </span>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="toggle-infjump">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+
+                <div class="feature-row">
+                    <span class="feature-name">
+                        Noclip
+                        <div class="tooltip-container">
+                            <i class="material-icons-round info-icon">help_outline</i>
+                            <span class="tooltip">Disable character collisions to walk through walls.</span>
+                        </div>
+                    </span>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="toggle-noclip">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Visuals -->
+            <div class="category">
+                <h3 class="category-label">
+                    <i class="material-icons-round cat-icon">visibility</i>
+                    Visuals
+                </h3>
+                <div class="feature-row">
+                    <span class="feature-name">
+                        Player ESP
+                        <div class="tooltip-container">
+                            <i class="material-icons-round info-icon">help_outline</i>
+                            <span class="tooltip">Renders identification boxes around players through walls.</span>
+                        </div>
+                    </span>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="toggle-esp">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+
+                <div class="feature-row">
+                    <span class="feature-name">
+                        Fullbright
+                        <div class="tooltip-container">
+                            <i class="material-icons-round info-icon">help_outline</i>
+                            <span class="tooltip">Force full ambient lighting across the entire world.</span>
+                        </div>
+                    </span>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="toggle-fullbright">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+
+                <!-- FOV Slider -->
+                <div class="slider-container">
+                    <div class="slider-header">
+                        <span class="slider-label-key">Field of View</span>
+                        <span id="label-fov" class="slider-label-val">70</span>
+                    </div>
+                    <div class="custom-slider" id="slider-fov-box">
+                        <div class="slider-track-fill" id="slider-fov-fill"></div>
+                        <div class="slider-thumb" id="slider-fov-thumb"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Misc -->
+            <div class="category">
+                <h3 class="category-label">
+                    <i class="material-icons-round cat-icon">star</i>
+                    Other
+                </h3>
+                <div class="feature-row">
+                    <span class="feature-name">
+                        God Mode
+                        <div class="tooltip-container">
+                            <i class="material-icons-round info-icon">help_outline</i>
+                            <span class="tooltip">Prevents health loss from all damage sources.</span>
+                        </div>
+                    </span>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="toggle-god">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+                <div class="feature-row">
+                    <span class="feature-name">
+                        Invisible
+                        <div class="tooltip-container">
+                            <i class="material-icons-round info-icon">help_outline</i>
+                            <span class="tooltip">Hides your character model from other players.</span>
+                        </div>
+                    </span>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="toggle-invisible">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Keybinds -->
+            <div class="category">
+                <h3 class="category-label">
+                    <i class="material-icons-round cat-icon">keyboard</i>
+                    Keybinds
+                </h3>
+                <div class="feature-row">
+                    <span class="feature-name">ESP Toggle</span>
+                    <div class="keybind-widget" id="kb-esp">
+                        <span class="kb-mode">Toggle</span>
+                        <span class="kb-sep"></span>
+                        <span class="kb-key">None</span>
+                    </div>
+                </div>
+                <div class="feature-row">
+                    <span class="feature-name">Speed Boost</span>
+                    <div class="keybind-widget" id="kb-speed">
+                        <span class="kb-mode">Hold</span>
+                        <span class="kb-sep"></span>
+                        <span class="kb-key">None</span>
+                    </div>
+                </div>
+            </div>
+
         </div>
-        <input type="range" id="speed" min="0" max="200" value="16" step="1" oninput="sync('speed','val-speed',this.value)">
-      </div>
 
-      <div class="row">
-        <div class="row-header">
-          <span class="row-name">Jump Power</span>
-          <span class="row-val" id="val-jump">50</span>
-        </div>
-        <input type="range" id="jump" min="0" max="300" value="50" step="1" oninput="sync('jump','val-jump',this.value)">
-      </div>
-
-      <div class="row">
-        <div class="row-header">
-          <span class="row-name">FOV</span>
-          <span class="row-val" id="val-fov">70</span>
-        </div>
-        <input type="range" id="fov" min="30" max="120" value="70" step="1" oninput="sync('fov','val-fov',this.value)">
-      </div>
-
-      <div class="toggle-row">
-        <span class="toggle-name">God Mode</span>
-        <button class="toggle" id="toggle-god" onclick="toggle('god')"></button>
-      </div>
-
-      <div class="toggle-row">
-        <span class="toggle-name">Noclip</span>
-        <button class="toggle" id="toggle-noclip" onclick="toggle('noclip')"></button>
-      </div>
-
-      <div class="toggle-row">
-        <span class="toggle-name">Infinite Jump</span>
-        <button class="toggle" id="toggle-infjump" onclick="toggle('infjump')"></button>
-      </div>
+        <footer class="gui-footer">
+            <div class="stat-item">
+                <i class="material-icons-round">cable</i>
+                <span id="stat-latency">-- ms</span>
+            </div>
+            <div class="stat-item">
+                <i class="material-icons-round">bar_chart</i>
+                <span id="stat-requests">0 Requests</span>
+            </div>
+        </footer>
     </div>
 
-    <!-- Visual -->
-    <div class="card">
-      <div class="card-label">Visual</div>
+    <div id="toast-area" class="notification-area"></div>
+    <div id="tooltip-portal" class="tooltip-portal"></div>
 
-      <div class="toggle-row">
-        <span class="toggle-name">ESP</span>
-        <button class="toggle" id="toggle-esp" onclick="toggle('esp')"></button>
-      </div>
-
-      <div class="toggle-row">
-        <span class="toggle-name">Fullbright</span>
-        <button class="toggle" id="toggle-fullbright" onclick="toggle('fullbright')"></button>
-      </div>
-
-      <div class="toggle-row">
-        <span class="toggle-name">Invisible</span>
-        <button class="toggle" id="toggle-invisible" onclick="toggle('invisible')"></button>
-      </div>
-    </div>
-
-    <button class="apply-btn" id="applyBtn" onclick="apply()">Apply</button>
-    <div class="feedback" id="feedback"></div>
-
-    <div class="log" id="log"><span class="l-info">-- log --</span></div>
-  </div>
-
-</div>
-
-<script>
-  const key = location.pathname.replace('/', '').trim();
-  if (!key) {
-    document.getElementById('waiting').innerHTML = '<div>No key in URL.</div><p>Open the URL the script copied.</p>';
-  }
-
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const toggleState = {};
-  let ws = null;
-  let reconnectTimer = null;
-
-  function connect() {
-    if (ws) return;
-    ws = new WebSocket(`${proto}://${location.host}`);
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'panel_hello', key }));
-    };
-
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-
-      if (msg.type === 'error') {
-        setStatus(false);
-        log(msg.msg, 'err');
-        return;
-      }
-
-      if (msg.type === 'connected') {
-        document.getElementById('waiting').classList.add('hidden');
-        document.getElementById('panel').classList.remove('hidden');
-        setStatus(true);
-        log('Script connected.', 'ok');
-      }
-
-      if (msg.type === 'disconnected') {
-        setStatus(false);
-        log('Script disconnected. Waiting for it to come back...', 'err');
-        scheduleReconnect();
-      }
-
-      if (msg.type === 'result') {
-        log('← ' + JSON.stringify(msg.data), 'ok');
-        feedback('Applied!', 'ok');
-      }
-    };
-
-    ws.onclose = () => {
-      ws = null;
-      setStatus(false);
-      scheduleReconnect();
-    };
-  }
-
-  function scheduleReconnect() {
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(() => {
-      ws = null;
-      connect();
-    }, 2000);
-  }
-
-  connect();
-
-  function setStatus(online) {
-    const dot = document.getElementById('dot');
-    const txt = document.getElementById('statusText');
-    dot.className = 'dot ' + (online ? 'online' : 'offline');
-    txt.textContent = online ? 'online' : 'offline';
-  }
-
-  function sync(id, valId, v) {
-    document.getElementById(valId).textContent = v;
-  }
-
-  function toggle(name) {
-    toggleState[name] = !toggleState[name];
-    const btn = document.getElementById('toggle-' + name);
-    btn.classList.toggle('on', toggleState[name]);
-  }
-
-  function apply() {
-    const values = {
-      speed:      parseInt(document.getElementById('speed').value),
-      jump:       parseInt(document.getElementById('jump').value),
-      fov:        parseInt(document.getElementById('fov').value),
-      god:        !!toggleState['god'],
-      noclip:     !!toggleState['noclip'],
-      infjump:    !!toggleState['infjump'],
-      esp:        !!toggleState['esp'],
-      fullbright: !!toggleState['fullbright'],
-      invisible:  !!toggleState['invisible'],
-    };
-    if (ws) ws.send(JSON.stringify({ type: 'apply', values }));
-    log('→ apply ' + JSON.stringify(values), 'info');
-    feedback('Sending...', 'info');
-  }
-
-  function log(msg, cls) {
-    const el = document.getElementById('log');
-    const line = document.createElement('div');
-    line.className = 'l-' + cls;
-    line.textContent = msg;
-    el.appendChild(line);
-    el.scrollTop = el.scrollHeight;
-  }
-
-  function feedback(msg, cls) {
-    const el = document.getElementById('feedback');
-    el.textContent = msg;
-    el.className = 'feedback ' + cls;
-    setTimeout(() => { el.textContent = ''; el.className = 'feedback'; }, 2500);
-  }
-</script>
+    <script src="script.js"></script>
 </body>
 </html>
