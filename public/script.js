@@ -360,6 +360,10 @@ function connect(key) {
             if (msg.msg.includes('Key not found')) {
                 document.getElementById('waiting-title').textContent = 'Key Invalid.';
                 document.getElementById('waiting-sub').textContent = 'Please use the link from the script.';
+            } else if (msg.msg.includes('Waiting for script')) {
+                enterDisconnectedState();
+                document.getElementById('waiting-title').textContent = 'Connecting...';
+                document.getElementById('waiting-sub').textContent = 'Make sure your script is running first.';
             }
         }
     };
