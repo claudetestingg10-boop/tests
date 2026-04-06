@@ -39,12 +39,13 @@ const els = {
 };
 
 let ws = null;
-let stats = { requests: 0, lastResultTime: null };
+let stats = { requests: 0 };
 let state = { 
-    speed: false, 
-    speedValue: 16,
+    speed: 16, 
+    speed_enabled: false,
+    jump: 50,
+    jump_enabled: false,
     infjump: false, 
-    jumpPower: 50,
     noclip: false,
     esp: false, 
     fullbright: false,
@@ -52,6 +53,8 @@ let state = {
     god: false,
     invisible: false
 };
+
+let lastSentTime = 0;
 
 const subLabel  = document.getElementById('sub-label');
 let savedExpireText = '';
@@ -228,8 +231,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // > ( Instances )
-const speedSlider = new CustomSlider(els.speedSliderBox, els.speedFill, els.speedThumb, els.speedLabel, 0, 200, 16, 'speedValue');
-const jumpSlider  = new CustomSlider(els.jumpSliderBox, els.jumpFill, els.jumpThumb, els.jumpLabel, 0, 300, 50, 'jumpPower');
+const speedSlider = new CustomSlider(els.speedSliderBox, els.speedFill, els.speedThumb, els.speedLabel, 0, 200, 16, 'speed');
+const jumpSlider  = new CustomSlider(els.jumpSliderBox, els.jumpFill, els.jumpThumb, els.jumpLabel, 0, 300, 50, 'jump');
 const fovSlider   = new CustomSlider(els.fovSliderBox, els.fovFill, els.fovThumb, els.fovLabel, 30, 120, 70, 'fov');
 
 const kbESP     = new KeybindWidget(document.getElementById('kb-esp'));
@@ -237,7 +240,7 @@ const kbSpeed   = new KeybindWidget(document.getElementById('kb-speed'));
 
 // > ( Toggle Bindings )
 const toggleMap = {
-    speedToggle: 'speed',
+    speedToggle: 'speed_enabled',
     infjumpToggle: 'infjump',
     noclipToggle: 'noclip',
     espToggle: 'esp',
@@ -262,6 +265,7 @@ function sendApply() {
     if (!ws || ws.readyState !== 1) return;
     if (applyThrottle) return;
     applyThrottle = setTimeout(function() {
+        lastSentTime = Date.now();
         ws.send(JSON.stringify({ type: 'apply', values: state }));
         applyThrottle = null;
     }, 50);
@@ -304,8 +308,9 @@ function connect(key) {
         } else if (msg.type === 'result') {
             stats.requests++;
             els.requests.textContent = stats.requests + ' REQS';
-            if (stats.lastResultTime) els.latency.textContent = (Date.now() - stats.lastResultTime) + ' MS';
-            stats.lastResultTime = Date.now();
+            if (lastSentTime) {
+                els.latency.textContent = (Date.now() - lastSentTime) + ' MS';
+            }
         } else if (msg.type === 'error') {
             notify(msg.msg, 'error');
             if (msg.msg.includes('Key not found')) {
