@@ -65,7 +65,12 @@ wss.on('connection', (ws) => {
         if (msg.type === 'script_hello') {
             key  = msg.key || crypto.randomBytes(8).toString('hex').toUpperCase();
             role = 'script';
-            rooms[key] = { script: ws, panel: null };
+            
+            if (!rooms[key]) {
+                rooms[key] = { script: ws, panel: null };
+            } else {
+                rooms[key].script = ws;
+            }
 
             const username  = msg.username || 'Unknown';
             const avatar    = msg.avatar   || '';
@@ -153,7 +158,15 @@ wss.on('connection', (ws) => {
         if (!key || !rooms[key]) return;
         const other = role === 'script' ? rooms[key].panel : rooms[key].script;
         send(other, { type: 'disconnected', who: role });
-        if (role === 'script') delete rooms[key];
-        else if (rooms[key]) rooms[key].panel = null;
+        
+        if (role === 'script') {
+            rooms[key].script = null;
+        } else {
+            rooms[key].panel = null;
+        }
+
+        if (!rooms[key].script && !rooms[key].panel) {
+            delete rooms[key];
+        }
     });
 });
