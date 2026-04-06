@@ -6,6 +6,10 @@ const crypto = require('crypto');
 const app = express();
 app.use(express.static('public'));
 
+app.get('*', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
 const db = new Database('panel.db');
 db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
