@@ -40,11 +40,14 @@ wss.on('connection', (ws) => {
             role = 'script';
             rooms[key] = { script: ws, panel: null };
             db.prepare('INSERT OR REPLACE INTO sessions VALUES (?, ?, ?)').run(key, Date.now(), Date.now());
-            send(ws, { type: 'your_key', key });
+
+            const junk = crypto.randomBytes(18).toString('base64url');
+            const fullKey = key + junk;
+            send(ws, { type: 'your_key', key, fullKey });
         }
 
         if (msg.type === 'panel_hello') {
-            key = msg.key;
+            key = msg.key.substring(0, 8).toUpperCase();
             role = 'panel';
             if (!rooms[key]?.script) {
                 send(ws, { type: 'error', msg: 'Key not found or script not connected.' });
