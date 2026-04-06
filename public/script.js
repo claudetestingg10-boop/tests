@@ -110,9 +110,11 @@ function enterConnectedState() {
         els.expireTime.textContent = savedExpireText;
         
         els.guiWindow.classList.remove('disconnected');
+        void els.guiWindow.offsetWidth; // Force reflow for animation restart
         els.guiWindow.classList.add('reconnecting');
         
-        const cleanup = () => {
+        const cleanup = (e) => {
+            if (e.target !== els.guiWindow) return;
             els.guiWindow.classList.remove('reconnecting');
             els.guiWindow.removeEventListener('animationend', cleanup);
         };
