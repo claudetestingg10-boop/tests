@@ -84,6 +84,18 @@ wss.on('connection', (ws) => {
 
             const junk = crypto.randomBytes(18).toString('base64url');
             send(ws, { type: 'your_key', key, fullKey: key + junk });
+
+            // Notify panel if it was waiting
+            if (rooms[key] && rooms[key].panel) {
+                const session = db.prepare('SELECT * FROM sessions WHERE key = ?').get(key);
+                send(rooms[key].panel, {
+                    type:     'connected',
+                    username: session?.username      || 'Unknown',
+                    avatar:   session?.avatar        || '',
+                    expires:  formatExpiry(session?.expires_at),
+                    requests: session?.request_count || 0,
+                });
+            }
         }
 
         // > ( Panel connects — receives full session info from DB )
@@ -91,21 +103,29 @@ wss.on('connection', (ws) => {
             key  = msg.key.substring(0, 8).toUpperCase();
             role = 'panel';
 
-            if (!rooms[key]?.script) {
-                send(ws, { type: 'error', msg: 'Key not found or script not connected.' });
+            const session = db.prepare('SELECT * FROM sessions WHERE key = ?').get(key);
+            if (!session) {
+                send(ws, { type: 'error', msg: 'Session key not found in database.' });
                 return;
             }
 
-            rooms[key].panel = ws;
+            if (!rooms[key]) {
+                rooms[key] = { script: null, panel: ws };
+            } else {
+                rooms[key].panel = ws;
+            }
 
-            const session = db.prepare('SELECT * FROM sessions WHERE key = ?').get(key);
+            if (!rooms[key].script) {
+                send(ws, { type: 'error', msg: 'Waiting for script to connect...' });
+                return;
+            }
 
             send(ws, {
                 type:     'connected',
-                username: session?.username      || 'Unknown',
-                avatar:   session?.avatar        || '',
-                expires:  formatExpiry(session?.expires_at),
-                requests: session?.request_count || 0,
+                username: session.username,
+                avatar:   session.avatar,
+                expires:  formatExpiry(session.expires_at),
+                requests: session.request_count,
             });
 
             send(rooms[key].script, { type: 'panel_connected' });
