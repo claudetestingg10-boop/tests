@@ -58,25 +58,67 @@ let lastSentTime = 0;
 
 const subLabel  = document.getElementById('sub-label');
 let savedExpireText = '';
-let isDisconnected    = false;
-let reconnectTimer    = null;
-let currentKey        = null;
+let isInitialLoad = true;
+let isDisconnected = false;
+let reconnectTimer = null;
+let currentKey = null;
+let offlineInterval = null;
+let offlineSeconds = 0;
 
 function enterDisconnectedState() {
     if (isDisconnected) return;
     isDisconnected = true;
     
-    els.guiWindow.classList.add('hidden');
-    els.waitingArea.classList.remove('hidden');
     updateStatus(false);
+
+    if (isInitialLoad) {
+        els.guiWindow.classList.add('hidden');
+        els.waitingArea.classList.remove('hidden');
+    } else {
+        // Cool collapse animation
+        savedExpireText = els.expireTime.textContent;
+        subLabel.textContent = 'Offline for';
+        offlineSeconds = 0;
+        els.expireTime.textContent = '0s';
+
+        clearInterval(offlineInterval);
+        offlineInterval = setInterval(function() {
+            offlineSeconds++;
+            var m = Math.floor(offlineSeconds / 60);
+            var s = offlineSeconds % 60;
+            els.expireTime.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
+        }, 1000);
+
+        els.guiWindow.classList.remove('reconnecting');
+        els.guiWindow.classList.add('disconnected');
+    }
 }
 
 function enterConnectedState() {
+    if (!isDisconnected && !isInitialLoad) return;
     isDisconnected = false;
+    isInitialLoad = false;
+    
+    clearInterval(offlineInterval);
     clearTimeout(reconnectTimer);
 
     els.waitingArea.classList.add('hidden');
     els.guiWindow.classList.remove('hidden');
+
+    if (els.guiWindow.classList.contains('disconnected')) {
+        subLabel.textContent = 'Expires in';
+        els.expireTime.textContent = savedExpireText;
+        
+        els.guiWindow.classList.remove('disconnected');
+        els.guiWindow.classList.add('reconnecting');
+        
+        const cleanup = () => {
+            els.guiWindow.classList.remove('reconnecting');
+            els.guiWindow.removeEventListener('animationend', cleanup);
+        };
+        els.guiWindow.addEventListener('animationend', cleanup);
+    }
+    
     updateStatus(true);
 }
 
@@ -314,7 +356,8 @@ function connect(key) {
         } else if (msg.type === 'error') {
             notify(msg.msg, 'error');
             if (msg.msg.includes('Key not found')) {
-                els.waitingArea.innerHTML = '<div>Key Invalid.</div><p>Please use the link from the script.</p>';
+                document.getElementById('waiting-title').textContent = 'Key Invalid.';
+                document.getElementById('waiting-sub').textContent = 'Please use the link from the script.';
             }
         }
     };
