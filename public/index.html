@@ -255,41 +255,62 @@
   }
 
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(`${proto}://${location.host}`);
-
   const toggleState = {};
+  let ws = null;
+  let reconnectTimer = null;
 
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'panel_hello', key }));
-  };
+  function connect() {
+    if (ws) return;
+    ws = new WebSocket(`${proto}://${location.host}`);
 
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'panel_hello', key }));
+    };
 
-    if (msg.type === 'error') {
-      document.getElementById('waiting').innerHTML = `<div style="color:#f87171">${msg.msg}</div><p>Run your script first, then open this URL.</p>`;
-      return;
-    }
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
 
-    if (msg.type === 'connected') {
-      document.getElementById('waiting').classList.add('hidden');
-      document.getElementById('panel').classList.remove('hidden');
-      setStatus(true);
-      log('Script connected.', 'ok');
-    }
+      if (msg.type === 'error') {
+        setStatus(false);
+        log(msg.msg, 'err');
+        return;
+      }
 
-    if (msg.type === 'disconnected') {
+      if (msg.type === 'connected') {
+        document.getElementById('waiting').classList.add('hidden');
+        document.getElementById('panel').classList.remove('hidden');
+        setStatus(true);
+        log('Script connected.', 'ok');
+      }
+
+      if (msg.type === 'disconnected') {
+        setStatus(false);
+        log('Script disconnected. Waiting for it to come back...', 'err');
+        scheduleReconnect();
+      }
+
+      if (msg.type === 'result') {
+        log('← ' + JSON.stringify(msg.data), 'ok');
+        feedback('Applied!', 'ok');
+      }
+    };
+
+    ws.onclose = () => {
+      ws = null;
       setStatus(false);
-      log('Script disconnected.', 'err');
-    }
+      scheduleReconnect();
+    };
+  }
 
-    if (msg.type === 'result') {
-      log('← ' + JSON.stringify(msg.data), 'ok');
-      feedback('Applied!', 'ok');
-    }
-  };
+  function scheduleReconnect() {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+      ws = null;
+      connect();
+    }, 2000);
+  }
 
-  ws.onclose = () => setStatus(false);
+  connect();
 
   function setStatus(online) {
     const dot = document.getElementById('dot');
@@ -320,7 +341,7 @@
       fullbright: !!toggleState['fullbright'],
       invisible:  !!toggleState['invisible'],
     };
-    ws.send(JSON.stringify({ type: 'apply', values }));
+    if (ws) ws.send(JSON.stringify({ type: 'apply', values }));
     log('→ apply ' + JSON.stringify(values), 'info');
     feedback('Sending...', 'info');
   }
